@@ -82,6 +82,7 @@ public:
     NewBasketDialog(BasketView *parentBasket, const NewBasketDefaultProperties &defaultProperties, QWidget *parent = 0);
     ~NewBasketDialog();
     void ensurePolished();
+    void setBasketName(QString name);
 protected slots:
     void slotOk();
     void returnPressed();

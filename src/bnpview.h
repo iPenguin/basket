@@ -207,6 +207,8 @@ public slots:
 
     void loadCrossReference(QString link);
     QString folderFromBasketNameLink(QStringList pages, QTreeWidgetItem *parent = 0);
+    void createBasketFromCrossRef(QString link, QTreeWidgetItem *item = 0);
+    QTreeWidgetItem* basketForItemName(QStringList pages);
 
 public:
     static QString s_fileToOpen;
