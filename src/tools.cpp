@@ -270,7 +270,7 @@ QString Tools::crossReferenceForConversion(QStringList linkParts)
     QString basketLink = linkParts.first();
     QString title;
 
-    if(basketLink.startsWith("basket://"))
+    if(basketLink.startsWith("basket://") || basketLink.startsWith("create-basket://"))
         return QString("[[%1|%2]]").arg(basketLink, linkParts.last());
 
     if(basketLink.endsWith('/'))
@@ -284,6 +284,12 @@ QString Tools::crossReferenceForConversion(QStringList linkParts)
         title = linkParts.last().trimmed();
 
     QString url = Global::bnpView->folderFromBasketNameLink(pages);
+
+    if(url.isEmpty()) {
+        if(!basketLink.startsWith("create-basket://"))
+            basketLink.prepend("create-basket://");
+        return QString("[[%1|%2]]").arg(basketLink, title);
+    }
 
     url.prepend("basket://");
     QString anchor;

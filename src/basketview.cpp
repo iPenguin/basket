@@ -2176,7 +2176,9 @@ void BasketView::contentsMouseReleaseEvent(QMouseEvent *event)
                 KMenu *menu = Global::bnpView->popupMenu("fileimport");
                 menu->exec(event->globalPos());
             } else if (link.startsWith("basket://")) {
-                emit crossReference(link);
+                Global::bnpView->loadCrossReference(link);
+            } else if (link.startsWith("create-basket://")) {
+                Global::bnpView->createBasketFromCrossRef(link);
             } else {
                 KRun *run = new KRun(KUrl(link), window()); //  open the URL.
                 run->setAutoDelete(true);
@@ -4122,7 +4124,7 @@ void BasketView::noteOpen(Note *note)
         QString customCommand = note->content()->customOpenCommand();
 
         if (url.url().startsWith("basket://")) {
-            emit crossReference(url.url());
+            Global::bnpView->loadCrossReference(url.url());
         } else if (customCommand.isEmpty()) {
             KRun *run = new KRun(url, window());
             run->setAutoDelete(true);

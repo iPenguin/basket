@@ -339,3 +339,8 @@ void NewBasketDialog::manageTemplates()
     KMessageBox::information(this, "Wait a minute! There is no template for now: they will come with time... :-D");
 }
 
+void NewBasketDialog::setBasketName(QString name)
+{
+    if(m_name)
+        m_name->setText(name);
+}
