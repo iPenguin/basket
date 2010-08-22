@@ -81,6 +81,10 @@ NoteEditor* NoteEditor::editNoteContent(NoteContent *noteContent, QWidget *paren
     if (htmlContent)
         return new HtmlEditor(htmlContent, parent);
 
+    EmailContent *emailContent = dynamic_cast<EmailContent*>(noteContent);
+    if(emailContent)
+        return new EmailEditor(emailContent, parent);
+
     ImageContent *imageContent = dynamic_cast<ImageContent*>(noteContent);
     if (imageContent)
         return new ImageEditor(imageContent, parent);
@@ -393,6 +397,85 @@ void HtmlEditor::validate()
     }
     delete widget();
     setInlineEditor(0);
+}
+
+
+/** class EmailEditor: */
+
+EmailEditor::EmailEditor(EmailContent *emailContent, QWidget *parent)
+        : NoteEditor(emailContent), m_emailContent(emailContent)
+{
+    FocusedTextEdit *textEdit = new FocusedTextEdit(/*disableUpdatesOnKeyPress=*/true, parent);
+    textEdit->setLineWidth(0);
+    textEdit->setMidLineWidth(0);
+    textEdit->setFrameStyle(QFrame::Box);
+    QPalette palette;
+    palette.setColor(textEdit->backgroundRole(), note()->backgroundColor());
+    palette.setColor(textEdit->foregroundRole(), note()->textColor());
+    textEdit->setPalette(palette);
+
+    textEdit->setFont(note()->font());
+    textEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    if (Settings::spellCheckTextNotes())
+        textEdit->setCheckSpellingEnabled(true);
+    textEdit->setPlainText(m_emailContent->html());
+
+    // Not sure if the following comment is still true
+    // FIXME: Sometimes, the cursor flicker at ends before being positionned where clicked (because kapp->processEvents() I think)
+    textEdit->moveCursor(QTextCursor::End);
+    textEdit->verticalScrollBar()->setCursor(Qt::ArrowCursor);
+    setInlineEditor(textEdit);
+    connect(textEdit, SIGNAL(escapePressed()), this, SIGNAL(askValidation()));
+    connect(textEdit, SIGNAL(mouseEntered()),  this, SIGNAL(mouseEnteredEditorWidget()));
+
+    connect(textEdit, SIGNAL(cursorPositionChanged()), emailContent->note()->basket(), SLOT(editorCursorPositionChanged()));
+    // In case it is a very big note, the top is displayed and Enter is pressed: the cursor is on bottom, we should enure it visible:
+    QTimer::singleShot(0, emailContent->note()->basket(), SLOT(editorCursorPositionChanged()));
+}
+
+EmailEditor::~EmailEditor()
+{
+    delete widget(); // TODO: delete that in validate(), so we can remove one method
+}
+
+void EmailEditor::autoSave(bool toFileToo)
+{
+    bool autoSpellCheck = true;
+    if (toFileToo) {
+        if (Settings::spellCheckTextNotes() != textEdit()->checkSpellingEnabled()) {
+            Settings::setSpellCheckTextNotes(textEdit()->checkSpellingEnabled());
+            Settings::saveConfig();
+        }
+
+        autoSpellCheck = textEdit()->checkSpellingEnabled();
+        textEdit()->setCheckSpellingEnabled(false);
+    }
+
+    m_emailContent->setHtml(textEdit()->toPlainText());
+
+    if (toFileToo) {
+        m_emailContent->saveToFile();
+        m_emailContent->setEdited();
+        textEdit()->setCheckSpellingEnabled(autoSpellCheck);
+    }
+}
+
+void EmailEditor::validate()
+{
+    if (Settings::spellCheckTextNotes() != textEdit()->checkSpellingEnabled()) {
+        Settings::setSpellCheckTextNotes(textEdit()->checkSpellingEnabled());
+        Settings::saveConfig();
+    }
+
+    textEdit()->setCheckSpellingEnabled(false);
+    if (textEdit()->document()->isEmpty())
+        setEmpty();
+    m_emailContent->setHtml(textEdit()->toPlainText());
+    m_emailContent->saveToFile();
+    m_emailContent->setEdited();
+
+//  delete widget();
 }
 
 /** class ImageEditor: */

@@ -89,6 +89,15 @@ Note* NoteFactory::createNoteHtml(const QString &html, BasketView *parent)
     return note;
 }
 
+Note* NoteFactory::createNoteEmail(const QString &email, BasketView *parent)
+{
+    Note *note = new Note(parent);
+    EmailContent *content = new EmailContent(note, createFileForNewNote(parent, "email"));
+    content->setHtml(email);
+    content->saveToFile();
+    return note;
+}
+
 Note* NoteFactory::createNoteLink(const KUrl &url, BasketView *parent)
 {
     Note *note = new Note(parent);
@@ -360,6 +369,13 @@ Note* NoteFactory::dropNote(const QMimeData *source, BasketView *parent, bool fr
         bool moveNotes = moveFiles;
         return NoteDrag::decode(source, parent, moveFiles, moveNotes); // Filename will be kept
     }
+
+    /* Email drop */
+    if(source->hasFormat("message/rfc822")) {
+        QByteArray data = source->data("message/rfc822");
+        return createNoteEmail(QString(data), parent);
+    }
+
 
     /* Else : Drop object to note */
 

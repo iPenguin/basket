@@ -47,6 +47,7 @@ namespace NoteFactory
   */
 Note* createNoteText(const QString &text,     BasketView *parent, bool reallyPlainText = false);
 Note* createNoteHtml(const QString &html,     BasketView *parent);
+Note* createNoteEmail(const QString &email, BasketView *parent);
 Note* createNoteLink(const KUrl    &url,      BasketView *parent);
 Note* createNoteLink(const KUrl    &url,      const QString &title, BasketView *parent);
 Note* createNoteCrossReference(const KUrl &url, BasketView *parent);

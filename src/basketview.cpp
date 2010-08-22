@@ -1726,7 +1726,7 @@ void BasketView::contentsDragLeaveEvent(QDragLeaveEvent*)
 void BasketView::contentsDropEvent(QDropEvent *event)
 {
     QPoint pos = event->pos();
-    kDebug() << "Contents Drop Event at position " << pos.x() << ":" << pos.y();
+    kDebug() << "Contents Drop Event at position " << pos.x() << ":" << pos.y() << event->mimeData()->formats();
 
     m_isDuringDrag = false;
     emit resetStatusBarText();
