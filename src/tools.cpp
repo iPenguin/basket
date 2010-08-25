@@ -43,6 +43,8 @@
 #include "htmlexporter.h"
 #include "linklabel.h"
 
+#include <QStringList>
+
 QVector<QTime>  StopWatch::starts;
 QVector<double> StopWatch::totals;
 QVector<uint>   StopWatch::counts;
@@ -281,6 +283,85 @@ QString Tools::crossReferenceForConversion(QStringList linkParts)
         anchor = QString("[[%1|%2]]").arg(url, title);
 
     return anchor;
+}
+
+QString Tools::fancyEmail(const QString &email)
+{
+    QString fancyMail = "";
+    QString header, fancyHeader, message;
+    int pos = 0;
+
+    QStringList lines = email.split("\n");
+
+    int i = 0;
+    bool hasMesg = false;
+
+    QRegExp re("^([^:]+:)(.*)$");
+    re.setMinimal(true);
+
+    for(/*i*/; i < lines.count(); ++i) {
+        QString line = lines[i];
+        if(hasMesg)
+            message.append("<br />\n" + lines[i]);
+        else {
+            if(line.contains(re))
+                header.append("\n" + lines[i]);
+            else
+                header.append(lines[i]);
+        }
+        if(lines[i].isEmpty() )
+            hasMesg = true;
+    }
+
+    QString to, from, subject, date, cc, bcc;
+
+    QRegExp toRe("^([tT]o:)(.*)$");
+    QRegExp fromRe("^([fF]rom:)(.*)$");
+    QRegExp subjectRe("^([sS]ubject:)(.*)$");
+    QRegExp dateRe("^([dD]ate:)(.*)$");
+    QRegExp ccRe("^([cC]{2}:)(.*)$");
+    QRegExp bccRe("^([bB][cC]{2}:)(.*)$");
+
+    QStringList hLines = header.split("\n");
+
+    foreach(QString line, hLines) {
+
+        if(line.contains(toRe))
+            to = line;
+        else if(line.contains(fromRe))
+            from = line;
+        else if(line.contains(subjectRe))
+            subject = line;
+        else if(line.contains(dateRe))
+            date = line;
+        else if(line.contains(ccRe))
+            cc = line;
+        else if(line.contains(bccRe))
+            bcc = line;
+    }
+    QString temp;
+
+    QStringList displayStrings;
+    displayStrings << to << from << subject << date << cc << bcc;
+
+    foreach(QString s, displayStrings) {
+        pos = re.indexIn(s);
+        kDebug() << re.cap(0);
+        if(pos != -1) {
+            temp = re.cap(1);
+            temp = "<b>" + temp + "</b>";
+            temp.append(re.cap(2));
+            fancyMail.append(temp);
+            if(s != displayStrings.last())
+                fancyMail.append("<br />");
+
+        }
+    }
+
+    fancyMail.append("<hr />");
+    fancyMail.append(message);
+
+    return fancyMail;
 }
 
 QString Tools::htmlToText(const QString &html)

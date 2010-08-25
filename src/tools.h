@@ -63,6 +63,9 @@ QString crossReferenceForBasket(QStringList linkParts);
 QString crossReferenceForHtml(QStringList linkParts, HTMLExporter *exporter);
 QString crossReferenceForConversion(QStringList linkParts);
 
+//Email Tools:
+QString fancyEmail(const QString &email);
+
 // String Manipulations:
 QString stripEndWhiteSpaces(const QString &string);
 

@@ -19,6 +19,7 @@ set(basketcommon_LIB_SRCS
     debugwindow.cpp
     decoratedbasket.cpp
     diskerrordialog.cpp
+    emailviewer.cpp
     exporterdialog.cpp
     filter.cpp
     focusedwidgets.cpp

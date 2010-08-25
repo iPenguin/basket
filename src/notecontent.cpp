@@ -64,6 +64,8 @@
 #include "kcolorcombo2.h"
 #include "htmlexporter.h"
 
+#include "emailviewer.h"
+
 #include "config.h"
 
 #include <KDE/KDebug>
@@ -1282,10 +1284,7 @@ bool EmailContent::finishLazyLoad()
     delete m_simpleRichText;
     m_simpleRichText = new QTextDocument;
 
-    QString css = ".cross_reference { display: block; width: 100%; text-decoration: none; color: #336600; }"
-       "a:hover.cross_reference { text-decoration: underline; color: #ff8000; }";
-    m_simpleRichText->setDefaultStyleSheet(css);
-    m_simpleRichText->setHtml(Tools::tagCrossReferences(Tools::tagURLs(m_html)));
+    m_simpleRichText->setHtml(Tools::fancyEmail(m_html));
     m_simpleRichText->setDefaultFont(note()->font());
     m_simpleRichText->setTextWidth(1); // We put a width of 1 pixel, so usedWidth() is egual to the minimum width
     int minWidth = m_simpleRichText->idealWidth();
