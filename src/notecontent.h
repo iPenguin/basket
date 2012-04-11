@@ -64,7 +64,7 @@ class HtmlExporter;
   */
 namespace NoteType
 {
-enum Id { Group = 255, Text = 1, Html, Image, Animation, Sound, File, Link, CrossReference, Launcher, Color, Unknown }; // Always positive
+enum Id { Group = 255, Text = 1, Html, Email, Image, Animation, Sound, File, Link, CrossReference, Launcher, Color, Unknown }; // Always positive
 }
 
 /** Abstract base class for every content type of basket note.
@@ -265,6 +265,54 @@ public:
     // Open Content or File:
     QString messageWhenOpening(OpenMessage where);
     QString customOpenCommand();
+    // Content-Specific Methods:
+    void    setHtml(const QString &html, bool lazyLoad = false); /// << Change the HTML note-content and relayout the note.
+    QString html() {
+        return m_html;
+    }     /// << @return the HTML note-content.
+    QByteArray data() {
+        return html().toLocal8Bit();
+    }
+protected:
+    QString          m_html;
+    QString          m_textEquivalent; //OPTIM_FILTER
+    QTextDocument *m_simpleRichText;
+};
+
+/** Real implementation of rich text (HTML) notes:
+ * @author Sébastien Laoût
+ */
+class EmailContent : public NoteContent
+{
+public:
+    // Constructor and destructor:
+    EmailContent(Note *parent, const QString &fileName, bool lazyLoad = false);
+    ~EmailContent();
+    // Simple Generic Methods:
+    NoteType::Id type() const;
+    QString typeName() const;
+    QString lowerTypeName() const;
+    QString toText(const QString &/*cuttedFullPath*/);
+    QString toHtml(const QString &imageName, const QString &cuttedFullPath);
+    bool    useFile() const;
+    bool    canBeSavedAs() const;
+    QString saveAsFilters() const;
+    bool    match(const FilterData &data);
+    // Complexe Generic Methods:
+    void    exportToHTML(HTMLExporter *exporter, int indent);
+    QString cssClass() const;
+    int     setWidthAndGetHeight(int width);
+    void    paint(QPainter *painter, int width, int height, const QPalette &palette, bool isDefaultColor, bool isSelected, bool isHovered);
+    bool    loadFromFile(bool lazyLoad);
+    bool    finishLazyLoad();
+    bool    saveToFile();
+    QString linkAt(const QPoint &pos);
+    void    fontChanged();
+    QString editToolTipText() const;
+    // Drag and Drop Content:
+    QPixmap feedbackPixmap(int width, int height);
+    // Open Content or File:
+    QString messageWhenOpening(OpenMessage where);
     // Content-Specific Methods:
     void    setHtml(const QString &html, bool lazyLoad = false); /// << Change the HTML note-content and relayout the note.
     QString html() {

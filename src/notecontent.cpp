@@ -160,6 +160,10 @@ NoteType::Id HtmlContent::type() const
 {
     return NoteType::Html;
 }
+NoteType::Id EmailContent::type() const
+{
+    return NoteType::Email;
+}
 NoteType::Id ImageContent::type() const
 {
     return NoteType::Image;
@@ -205,6 +209,10 @@ QString HtmlContent::typeName() const
 {
     return i18n("Text");
 }
+QString EmailContent::typeName() const
+{
+    return i18n("Email");
+}
 QString ImageContent::typeName() const
 {
     return i18n("Image");
@@ -249,6 +257,10 @@ QString TextContent::lowerTypeName() const
 QString HtmlContent::lowerTypeName() const
 {
     return "html";
+}
+QString EmailContent::lowerTypeName() const
+{
+    return "email";
 }
 QString ImageContent::lowerTypeName() const
 {
@@ -300,6 +312,10 @@ QString HtmlContent::toText(const QString &/*cuttedFullPath*/)
 {
     return Tools::htmlToText(html());
 }
+QString EmailContent::toText(const QString &)
+{
+    return html();
+}
 QString LinkContent::toText(const QString &/*cuttedFullPath*/)
 {
     if (autoTitle())
@@ -342,6 +358,11 @@ QString TextContent::toHtml(const QString &/*imageName*/, const QString &/*cutte
 QString HtmlContent::toHtml(const QString &/*imageName*/, const QString &/*cuttedFullPath*/)
 {
     return Tools::htmlToParagraph(html());
+}
+
+QString EmailContent::toHtml(const QString &/*imageName*/, const QString &/*cuttedFullPath*/)
+{
+    return html();
 }
 
 QString ImageContent::toHtml(const QString &/*imageName*/, const QString &cuttedFullPath)
@@ -438,6 +459,10 @@ bool HtmlContent::useFile() const
 {
     return true;
 }
+bool EmailContent::useFile() const
+{
+    return true;
+}
 bool ImageContent::useFile() const
 {
     return true;
@@ -480,6 +505,10 @@ bool TextContent::canBeSavedAs() const
     return true;
 }
 bool HtmlContent::canBeSavedAs() const
+{
+    return true;
+}
+bool EmailContent::canBeSavedAs() const
 {
     return true;
 }
@@ -528,6 +557,10 @@ QString HtmlContent::saveAsFilters() const
 {
     return "text/html";
 }
+QString EmailContent::saveAsFilters() const
+{
+    return "message/rfc822";
+} //TODO: look into the "x-kmail-drag/message-list" format.
 QString ImageContent::saveAsFilters() const
 {
     return "image/png";
@@ -573,6 +606,10 @@ bool HtmlContent::match(const FilterData &data)
 {
     return m_textEquivalent/*toText("")*/.contains(data.string);
 } //OPTIM_FILTER
+bool EmailContent::match(const FilterData &data)
+{
+    return html().contains(data.string);
+}
 bool ImageContent::match(const FilterData &/*data*/)
 {
     return false;
@@ -618,6 +655,10 @@ QString HtmlContent::editToolTipText() const
 {
     return i18n("Edit this text");
 }
+QString EmailContent::editToolTipText() const
+{
+    return i18n("Edit this email");
+}
 QString ImageContent::editToolTipText() const
 {
     return i18n("Edit this image");
@@ -660,6 +701,10 @@ QString TextContent::cssClass() const
     return "";
 }
 QString HtmlContent::cssClass() const
+{
+    return "";
+}
+QString EmailContent::cssClass() const
 {
     return "";
 }
@@ -708,6 +753,10 @@ void HtmlContent::fontChanged()
 {
     setHtml(html());
 }
+void EmailContent::fontChanged()
+{
+    setHtml(html());
+}
 void ImageContent::fontChanged()
 {
     setPixmap(pixmap());
@@ -746,6 +795,7 @@ QString HtmlContent::customOpenCommand()
 {
     return (Settings::isHtmlUseProg()      && ! Settings::htmlProg().isEmpty()      ? Settings::htmlProg()      : QString());
 }
+
 QString ImageContent::customOpenCommand()
 {
     return (Settings::isImageUseProg()     && ! Settings::imageProg().isEmpty()     ? Settings::imageProg()     : QString());
@@ -786,6 +836,26 @@ QPixmap TextContent::feedbackPixmap(int width, int height)
 }
 
 QPixmap HtmlContent::feedbackPixmap(int width, int height)
+{
+    QTextDocument richText;
+    richText.setHtml(html());
+    richText.setDefaultFont(note()->font());
+    richText.setTextWidth(width);
+    QPalette palette;
+    palette = basket()->palette();
+    palette.setColor(QPalette::Text,       note()->textColor());
+    palette.setColor(QPalette::Background, note()->backgroundColor().dark(FEEDBACK_DARKING));
+    QPixmap pixmap(qMin(width, (int)richText.idealWidth()), qMin(height, (int)richText.size().height()));
+    pixmap.fill(note()->backgroundColor().dark(FEEDBACK_DARKING));
+    QPainter painter(&pixmap);
+    painter.setPen(note()->textColor());
+    painter.translate(0, 0);
+    richText.drawContents(&painter, QRect(0, 0, pixmap.width(), pixmap.height()));
+    painter.end();
+    return pixmap;
+}
+
+QPixmap EmailContent::feedbackPixmap(int width, int height)
 {
     QTextDocument richText;
     richText.setHtml(html());
@@ -1173,6 +1243,122 @@ void HtmlContent::exportToHTML(HTMLExporter *exporter, int indent)
         convert = Tools::tagCrossReferences(convert, false, exporter);
 
     exporter->stream << Tools::htmlToParagraph(convert)
+    .replace("  ", " &nbsp;")
+    .replace("\n", "\n" + spaces.fill(' ', indent + 1));
+}
+
+/** class EmailContent:
+ */
+
+EmailContent::EmailContent(Note *parent, const QString &fileName, bool lazyLoad)
+        : NoteContent(parent, fileName), m_simpleRichText(0)
+{
+    basket()->addWatchedFile(fullPath());
+    loadFromFile(lazyLoad);
+}
+
+EmailContent::~EmailContent()
+{
+    delete m_simpleRichText;
+}
+
+int EmailContent::setWidthAndGetHeight(int width)
+{
+    if (m_simpleRichText) {
+        width -= 1;
+        m_simpleRichText->setTextWidth(width);
+        return m_simpleRichText->size().height();
+    } else
+        return 10; // Lazy loaded
+}
+
+void EmailContent::paint(QPainter *painter, int width, int height, const QPalette &/*palette*/, bool /*isDefaultColor*/, bool /*isSelected*/, bool /*isHovered*/)
+{
+    if (m_simpleRichText) {
+        width -= 1;
+        painter->translate(0, 0);
+        m_simpleRichText->drawContents(painter, QRect(0, 0, width, height));
+    }
+}
+
+bool EmailContent::loadFromFile(bool lazyLoad)
+{
+    DEBUG_WIN << "Loading EmailContent From " + basket()->folderName() + fileName();
+
+    QString content;
+    bool success = basket()->loadFromFile(fullPath(), &content, /*isLocalEncoding=*/true);
+
+    if (success)
+        setHtml(content, lazyLoad);
+    else {
+        kDebug() << "FAILED TO LOAD EmailContent: " << fullPath();
+        setHtml("", lazyLoad);
+        if (!QFile::exists(fullPath()))
+            saveToFile(); // Reserve the fileName so no new note will have the same name!
+    }
+    return success;
+}
+
+bool EmailContent::finishLazyLoad()
+{
+    int width = (m_simpleRichText ? m_simpleRichText->idealWidth() : 1);
+    delete m_simpleRichText;
+    m_simpleRichText = new QTextDocument;
+
+    QString css = ".cross_reference { display: block; width: 100%; text-decoration: none; color: #336600; }"
+       "a:hover.cross_reference { text-decoration: underline; color: #ff8000; }";
+    m_simpleRichText->setDefaultStyleSheet(css);
+    m_simpleRichText->setHtml(Tools::tagCrossReferences(Tools::tagURLs(m_html)));
+    m_simpleRichText->setDefaultFont(note()->font());
+    m_simpleRichText->setTextWidth(1); // We put a width of 1 pixel, so usedWidth() is egual to the minimum width
+    int minWidth = m_simpleRichText->idealWidth();
+    m_simpleRichText->setTextWidth(width);
+    contentChanged(minWidth + 1);
+
+    return true;
+}
+
+bool EmailContent::saveToFile()
+{
+    return basket()->saveToFile(fullPath(), html(), /*isLocalEncoding=*/true);
+}
+
+QString EmailContent::linkAt(const QPoint &pos)
+{
+    if (m_simpleRichText)
+        return m_simpleRichText->documentLayout()->anchorAt(pos);
+    else
+        return ""; // Lazy loaded
+}
+
+
+QString EmailContent::messageWhenOpening(OpenMessage where)
+{
+    switch (where) {
+    case OpenOne:               return i18n("Opening text...");
+    case OpenSeveral:           return i18n("Opening texts...");
+    case OpenOneWith:           return i18n("Opening text with...");
+    case OpenSeveralWith:       return i18n("Opening texts with...");
+    case OpenOneWithDialog:     return i18n("Open text with:");
+    case OpenSeveralWithDialog: return i18n("Open texts with:");
+    default:                    return "";
+    }
+}
+
+void EmailContent::setHtml(const QString &html, bool lazyLoad)
+{
+    m_html = html;
+    m_textEquivalent = toText(""); //OPTIM_FILTER
+    if (!lazyLoad)
+        finishLazyLoad();
+    else
+        contentChanged(10);
+}
+
+void EmailContent::exportToHTML(HTMLExporter *exporter, int indent)
+{
+    QString spaces;
+    exporter->stream << Tools::htmlToParagraph(Tools::tagCrossReferences(Tools::tagURLs(html().replace("\t", "                ")), false, exporter))
     .replace("  ", " &nbsp;")
     .replace("\n", "\n" + spaces.fill(' ', indent + 1));
 }
@@ -2571,6 +2757,7 @@ void NoteFactory__loadNode(const QDomElement &content, const QString &lowerTypeN
 {
     if (lowerTypeName == "text")      new TextContent(parent, content.text(), lazyLoad);
     else if (lowerTypeName == "html")      new HtmlContent(parent, content.text(), lazyLoad);
+    else if (lowerTypeName == "email")     new EmailContent(parent, content.text(), lazyLoad);
     else if (lowerTypeName == "image")     new ImageContent(parent, content.text(), lazyLoad);
     else if (lowerTypeName == "animation") new AnimationContent(parent, content.text(), lazyLoad);
     else if (lowerTypeName == "sound")     new SoundContent(parent, content.text());

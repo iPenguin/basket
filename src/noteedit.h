@@ -156,6 +156,18 @@ protected slots:
     void setBlock();
 };
 
+class EmailEditor : public NoteEditor
+{
+    Q_OBJECT
+public:
+    EmailEditor(EmailContent *emailContent, QWidget *parent);
+    ~EmailEditor();
+    void validate();
+    void autoSave(bool toFileToo);
+protected:
+    EmailContent *m_emailContent;
+};
+
 class ImageEditor : public NoteEditor
 {
     Q_OBJECT

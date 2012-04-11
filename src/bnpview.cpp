@@ -1135,7 +1135,6 @@ BasketView* BNPView::loadBasket(const QString &folderName)
     connect(basket, SIGNAL(propertiesChanged(BasketView*)), this, SLOT(updateBasketListViewItem(BasketView*)));
 
     connect(basket->decoration()->filterBar(), SIGNAL(newFilter(const FilterData&)), this, SLOT(newFilterFromFilterBar()));
-    connect(basket, SIGNAL(crossReference(QString)), this, SLOT(loadCrossReference(QString)));
 
     return basket;
 }
@@ -3109,4 +3108,122 @@ void BNPView::sortSiblingsDesc()
         m_tree->sortItems(0, Qt::DescendingOrder);
     else
         parent->sortChildren(0, Qt::DescendingOrder);
+}
+
+void BNPView::createBasketFromCrossRef(QString link, QTreeWidgetItem *item)
+{
+    BasketView *parent =0;
+
+    if(link.startsWith("create-basket://"))
+        link = link.right(link.length() -16); //remove create-basket://
+    QStringList pages = link.split("/");
+
+    BasketListViewItem *it = static_cast<BasketListViewItem*>(this->basketForItemName(pages));
+    parent = it->basket();
+
+    int i = 0;
+    bool createBasket = false;
+
+    for(/*i*/; i < pages.count(); ++i) {
+
+        if(createBasket) {
+            NewBasketDefaultProperties properties;
+
+            if (parent) {
+                properties.icon            = parent->icon();
+                properties.backgroundImage = parent->backgroundImageName();
+                properties.backgroundColor = parent->backgroundColorSetting();
+                properties.textColor       = parent->textColorSetting();
+                properties.freeLayout      = parent->isFreeLayout();
+                properties.columnCount     = parent->columnsCount();
+            }
+
+            NewBasketDialog *d = new NewBasketDialog(parent, properties, this);
+            d->setBasketName(pages[i]);
+            if(d->exec() != KDialog::Accepted)
+                break;//don't try to add more baskets.
+
+            //find the basket we just created and use it as the parent for
+            // the next basket, if any, that we create.
+            for(int j = 0; j < it->childCount(); j++) {
+                QTreeWidgetItem *child = it->child(j);
+                if(child->text(0).toLower() == pages[i].toLower()) {
+                    BasketListViewItem *c = static_cast<BasketListViewItem*>(child);
+                    parent = c->basket();
+                }
+            }
+        }
+
+        if(pages[i] == it->basket()->basketName())
+            createBasket = true;
+    }
+}
+
+QTreeWidgetItem* BNPView::basketForItemName(QStringList pages)
+{
+    QString folderName = "";
+    QTreeWidgetItem *it;
+    QTreeWidgetItem *parent = 0;
+
+    foreach(QString page, pages) {
+        //FIXME: decode_string is depreciated
+        page = KUrl::decode_string(page);
+        it = 0;
+        if(page == "..") {
+            QTreeWidgetItem *p;
+            if(parent)
+                p = parent->parent();
+            else
+                p = m_tree->currentItem()->parent();
+            folderName = this->folderFromBasketNameLink(QStringList(page), p);
+            BasketView *basket = this->basketForFolderName(folderName);
+            parent = p;
+            it = this->listViewItemForBasket(basket);
+        } else if(!parent && page == "") {
+            parent = m_tree->invisibleRootItem();
+            it = m_tree->invisibleRootItem();
+        } else {
+            if(!parent && (page == "." || page != "")) {
+                parent = m_tree->currentItem();
+            }
+            QRegExp re(":\\{([0-9]+)\\}");
+            re.setMinimal(true);
+            int pos = 0;
+
+            pos = re.indexIn(page, pos);
+            int basketNum = 1;
+
+            if(pos != -1)
+                basketNum = re.cap(1).toInt();
+
+            page = page.left(page.length() - re.matchedLength());
+
+            for(int i = 0; i < parent->childCount(); i++) {
+                QTreeWidgetItem *child = parent->child(i);
+                if(child->text(0).toLower() == page.toLower()) {
+                    basketNum--;
+                    if(basketNum == 0) {
+                        if(pages.count() > 0) {
+                            folderName = this->folderFromBasketNameLink(QStringList(page), parent);
+                            BasketView *basket = this->basketForFolderName(folderName);
+                            it = this->listViewItemForBasket(basket);
+                            break;
+                        } else {
+                            folderName = ((BasketListViewItem*)child)->basket()->folderName();
+                            BasketView *basket = this->basketForFolderName(folderName);
+                            it = this->listViewItemForBasket(basket);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if(it)
+            parent = it;
+    }
+    if(it)
+        return it;
+    else
+        return parent;
 }

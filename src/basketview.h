@@ -104,8 +104,6 @@ public:
     void clickedToInsert(QMouseEvent *event, Note *clicked = 0, int zone = 0);
 private slots:
     void setFocusIfNotInPopupMenu();
-signals:
-    void crossReference(QString link);
 
 /// LAYOUT:
 private:
