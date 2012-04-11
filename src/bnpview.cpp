@@ -3166,9 +3166,9 @@ QTreeWidgetItem* BNPView::basketForItemName(QStringList pages)
     QTreeWidgetItem *parent = 0;
 
     foreach(QString page, pages) {
-        //FIXME: decode_string is depreciated
-        page = KUrl::decode_string(page);
-        it = 0;
+        page = QUrl::fromPercentEncoding(page.toLatin1());
+        
+	it = 0;
         if(page == "..") {
             QTreeWidgetItem *p;
             if(parent)
